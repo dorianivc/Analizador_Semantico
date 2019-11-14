@@ -3,6 +3,7 @@ class Variable:
         self.nombre=nombre
         self.valor=valor
         self.alcance=alcance
+        self.es_parametro=False
 
     def variable_to_string(self):
         var="Var: "+ self.nombre + "Valor "+ self.valor+ " Alcance->Funcion: "+ self.alcance

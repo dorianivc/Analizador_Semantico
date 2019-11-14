@@ -7,3 +7,6 @@ void funcion(float v, string n){
         x = x + 5;
         }
 }
+string foo(int x)){
+    return null;
+}
