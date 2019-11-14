@@ -1,0 +1,9 @@
+class Variable:
+    def __init__(self,nombre,valor,alcance):
+        self.nombre=nombre
+        self.valor=valor
+        self.alcance=alcance
+
+    def variable_to_string(self):
+        var="Var: "+ self.nombre + "Valor "+ self.valor+ " Alcance->Funcion: "+ self.alcance
+        return var
