@@ -1,7 +1,7 @@
 int x = 40;
 int y = 17;
-string prueba = "valor";
-void funcion(float v, string n){
+String prueba = "valor";
+void funcion(float v, string n, string p){
     if (v > 0.0){
         n = “Mayor”;
         x = x + 5;
