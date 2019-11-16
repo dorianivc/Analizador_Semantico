@@ -6,3 +6,4 @@ analizador.cargar_codigo(nombre)
 analizador.analizar_codigo()
 var=analizador.tabla_de_valores['variable']
 #print(var['x'].valor)
+print(str().isdigit())

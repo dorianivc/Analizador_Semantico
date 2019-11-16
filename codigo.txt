@@ -6,7 +6,8 @@ void funcion(float v, string n, string p){
         n = “Mayor”;
         x = x + 5;
         }
+        return ;
 }
-string foo(int x)){
-    return null;
+string funcion_test(string v, string n, string p){
+    return "v";
 }
