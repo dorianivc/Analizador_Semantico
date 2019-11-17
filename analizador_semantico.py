@@ -1,7 +1,10 @@
+import queue
+
 from analizador_archivos import analizador_de_texto
-from variable import Variable
 from funcion import Funcion
-import queue;
+from variable import Variable
+
+
 class Analizador_semantico:
     def __init__(self):
         self.tabla_de_valores={'variable':dict(), 'funcion':dict(), 'parametro':dict()}
@@ -52,12 +55,19 @@ class Analizador_semantico:
             return True
         return False
     def es_int(self,var):
-        return var.isdigit()
-
+        return var.isdecimal()
+    def set_variable_a_funcion(self,var,funcion):
+        size=len(funcion.variables)
+        for i in range(size):
+            if(funcion.variables[i].nombre==var.nombre):
+                funcion.variables[i]=var
+                return
+        funcion.variables.append(var)
     def analizar_codigo(self):
         diccionario_de_funciones=self.tabla_de_valores['funcion']
         size=len(self.codigo)
         localidad=False
+        contador_de_llaves=0
         nombre_de_la_funcion=queue.LifoQueue()
         nombre_de_la_funcion.put("global")
         metodos=list()
@@ -103,6 +113,7 @@ class Analizador_semantico:
                 else:
                     metodos.append(metodo_actual)
                 
+                
 
             elif(linea_textual.find("=")!=-1):
                 ##Entra aqui si encuentra una asignacion de variable
@@ -114,17 +125,44 @@ class Analizador_semantico:
                 valor=linea_textual[pos:tam]
                 valor=valor.split(';')[0]           
                 diccionario=self.tabla_de_valores['variable']
+                condicion=True
+                _funcion=None
+                stack=queue.LifoQueue()
+               
                 if(diccionario.get(nombre) is not None):
                     variable=diccionario[nombre]
                     variable.valor=valor
                     diccionario[nombre]=variable
                     self.tabla_de_valores['variable']=diccionario
                     print("Valor actualizado en la tabla de simbolos")
-                #elif(self.tabla_de_valores['parametro'].get(nombre) is not None)
+                diccionario=self.tabla_de_valores['parametro']
+                if(diccionario.get(nombre) is not None):
+                    variable=diccionario[nombre]
+                    variable.valor=valor
+                    diccionario[nombre]=variable
+                    self.tabla_de_valores['parametro']=diccionario
+                    print("Valor actualizado en la tabla de simbolos")
                 else:
-                    print("Error de asignacion en linea #: ", var, " la variable o tipo de dato ","''" , nombre,"''", " no ha sido declarada")
+                    for i in range(len(metodos)):
+                        _funcion=metodos.pop()
+                        stack.put(_funcion)
+                        ##verificamos que la variable exista acá
+                        if(self.existe_dentro_de_una_funcion(variable,_funcion) is True):
+                            self.set_variable_a_funcion(variable,_funcion)
+                            metodos.append(variable)
+                            i=2*contador_de_llaves
+                            stack.get()
+                    while(stack.empty() is not True):
+                        metodos.append(stack.get())
+                  
+
+
+                
+
               
             elif((linea_textual.find("int")!=-1 or linea_textual.find("string")!=-1 or linea_textual.find("float")!=-1 or linea_textual.find("void")!=-1) and  (linea_textual.find("()")!=-1 or linea_textual.find("( )")!=-1 or linea_textual.find("(  )")!=-1)):
+                if(linea_textual.find("{")!=-1):
+                    contador_de_llaves=contador_de_llaves+1
                 print("Declaracion de una funcion sin parametros en la linea #: ", var)
                 if(linea_textual.find("{")):
                     print("Inicio de alcance en linea # ", var) 
@@ -139,7 +177,7 @@ class Analizador_semantico:
                     diccionario_de_funciones[_funcion]=_funcion
                     self.tabla_de_valores['funcion']=diccionario_de_funciones
                     print("Funcion ", _funcion.nombre, " ha sido agregada a la tabla")
-                    print(diccionario_de_funciones.keys())
+                    #print(diccionario_de_funciones.keys())
                 else:
                     print("La funcion ya existe")
                         
@@ -234,6 +272,8 @@ class Analizador_semantico:
             
             elif((linea_textual.find("int")!=-1 or linea_textual.find("string")!=-1 or linea_textual.find("float")!=-1) or linea_textual.find("void")!=-1 and  (linea_textual.find("(")!=-1 and linea_textual.find(")")!=-1)):
                 #Entra aquí si encuentra declaracion de funcion
+                if(linea_textual.find("{")!=-1):
+                    contador_de_llaves=contador_de_llaves+1
                 print("Declaracion de funcion con parametros en linea #: ", var)
                 comas=linea_textual.count(",")
                 if(linea_textual.find("{")):
@@ -321,12 +361,14 @@ class Analizador_semantico:
                     diccionario_de_funciones[_funcion]=_funcion
                     self.tabla_de_valores['funcion']=diccionario_de_funciones
                     print("Funcion ", _funcion.nombre, " ha sido agregada a la tabla")
-                    print(diccionario_de_funciones.keys())
+                   # print(diccionario_de_funciones.keys())
                 else:
                     print("La funcion ya existe")
                         
             
             elif((linea_textual.find("if")!=-1 and  (linea_textual.find("(")!=-1 and linea_textual.find(")")!=-1))):
+                if(linea_textual.find("{")!=-1):
+                    contador_de_llaves=contador_de_llaves+1
                 print("Declaracion de condicional if en linea #: ",var)
                 if(linea_textual.find("{")):
                     print("Inicio de alcance en linea # ", var)   
@@ -347,8 +389,18 @@ class Analizador_semantico:
                     const_1=False
                     const_2=False
                     variable_2=tripleta[2]
-                    _funcion_anterior=metodos.pop()
-                    metodos.append(_funcion_anterior)
+                    condicion=True
+                    _funcion_anterior=None
+                    pila=queue.LifoQueue()
+                    while(condicion):
+                        _funcion_anterior=metodos.pop()
+                        pila.put(_funcion_anterior)
+                        if(_funcion_anterior.nombre.find("if")!=-1 or _funcion_anterior.nombre.find("while")!=-1 ):
+                            condicion=True
+                        else:
+                            condicion=False
+                    while(pila.empty() is not True):
+                        metodos.append(pila.get()) 
                     if(variable_1.isidentifier()):
                         if(self.existe_dentro_de_una_funcion(variable_1,_funcion_anterior) is True):
                             variable_1=self.retorna_variable_desde_funcion(variable_1,_funcion_anterior)
@@ -394,7 +446,7 @@ class Analizador_semantico:
                         if(self.que_tipo_de_dato(variable_1)==variable_2.tipo_de_dato):
                             print("comparacion constante variable aceptada en linea # ", var)
                         else:
-                            print("comparacion constante variable aceptada, tipo de datos distintos en linea # ", var)
+                            print("tipo de datos distintos en linea # ", var)
 
                     elif(const_1==True and const_2!=True):
                         if(self.que_tipo_de_dato(variable_2)==variable_1.tipo_de_dato):
@@ -411,6 +463,8 @@ class Analizador_semantico:
                     #revisar que existan los parametro
             
             elif((linea_textual.find("while")!=-1 and  (linea_textual.find("(")!=-1 and linea_textual.find(")")!=-1))):
+                if(linea_textual.find("{")!=-1):
+                    contador_de_llaves=contador_de_llaves+1
                 print("Declaracion de sentencia while en linea #: ", var)
                 if(linea_textual.find("{")):
                     print("Inicio de alcance en linea # ", var) 
@@ -433,13 +487,19 @@ class Analizador_semantico:
                     variable_2=tripleta[2]
                     condicion=True
                     _funcion_anterior=None
+                    pila=None
+                    pila=queue.LifoQueue()
                     while(condicion):
                         _funcion_anterior=metodos.pop()
-                        
+                        pila.put(_funcion)
                         if(_funcion_anterior.nombre.find("if")!=-1 or _funcion_anterior.nombre.find("while")!=-1 ):
+                            if(self.existe_dentro_de_una_funcion(variable_1,_funcion_anterior) is True or self.existe_dentro_de_una_funcion(variable_2,_funcion_anterior) is True ):
+                                condicion=False
                             condicion=True
                         else:
                             condicion=False
+                    while(pila.empty() is not True):
+                        metodos.append(pila.get())
                     if(variable_1.isidentifier()):
                         if(self.existe_dentro_de_una_funcion(variable_1,_funcion_anterior) is True):
                             variable_1=self.retorna_variable_desde_funcion(variable_1,_funcion_anterior)
@@ -485,7 +545,7 @@ class Analizador_semantico:
                         if(self.que_tipo_de_dato(variable_1)==variable_2.tipo_de_dato):
                             print("comparacion constante variable aceptada en linea # ", var)
                         else:
-                            print("comparacion constante variable aceptada, tipo de datos distintos en linea # ", var)
+                            print(" tipo de datos distintos en linea # ", var)
 
                     elif(const_1==True and const_2!=True):
                         if(self.que_tipo_de_dato(variable_2)==variable_1.tipo_de_dato):
@@ -502,15 +562,15 @@ class Analizador_semantico:
             
             
             elif(linea_textual.find("{")!=-1):
+                contador_de_llaves=contador_de_llaves+1
                 print("Inicio de alcance en linea # ", var)  
                 localidad=True
                         
             
             elif(linea_textual.find("}")!=-1):
+                
                 print("Fin de alcance en linea ", var)
                 flag=nombre_de_la_funcion.get()
                 if(flag=="global"):
                     localidad=False
                     nombre_de_la_funcion.put("global")
-                
-                
