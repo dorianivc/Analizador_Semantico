@@ -17,7 +17,43 @@ class Analizador_semantico:
                 return True
         else:
             return False    
-    
+    def existe_dentro_de_una_funcion(self,variable,funcion):
+        size=len(funcion.variables)
+        for i in range(size):
+            if(funcion.variables[i].nombre==variable):
+                return True
+        return False
+    def retorna_variable_desde_funcion(self,variable,funcion):
+        if(self.existe_dentro_de_una_funcion(variable,funcion) is True):
+            size=len(funcion.variables)
+            for i in range(size):
+                if(funcion.variables[i].nombre==variable):
+                    return funcion.variables[i]
+        return None
+    def que_tipo_de_dato(self,var):
+        if(self.es_int(var) is True):
+            return "int"
+        elif(self.es_float(var) is True):
+            return "float"
+        elif(self.es_string(var) is True):
+            return "string"
+        else:
+            return -1
+    def es_float(self,var):
+        size=len(var)
+        for i in range(size):
+            if(var[i].isdigit() is not True):
+                if(var[i]!="."):
+                    return False
+        return True
+    def es_string(self,var):
+        size=len(var)
+        if(var[0]=='"' and var[size-1]=='"'):
+            return True
+        return False
+    def es_int(self,var):
+        return var.isdigit()
+
     def analizar_codigo(self):
         diccionario_de_funciones=self.tabla_de_valores['funcion']
         size=len(self.codigo)
@@ -84,6 +120,7 @@ class Analizador_semantico:
                     diccionario[nombre]=variable
                     self.tabla_de_valores['variable']=diccionario
                     print("Valor actualizado en la tabla de simbolos")
+                #elif(self.tabla_de_valores['parametro'].get(nombre) is not None)
                 else:
                     print("Error de asignacion en linea #: ", var, " la variable o tipo de dato ","''" , nombre,"''", " no ha sido declarada")
               
@@ -117,6 +154,7 @@ class Analizador_semantico:
                             print("Interrumpe procedimiento en linea # ", var)
                     elif(linea_actual.palabras[0]=="return" or linea_actual.palabras[0]=="return;"):
                         print("Interrumpe procedimiento en linea # ", var)
+                        #metodos.pop()
                     else:
                         print("ERROR EN SENTENCIA RETURN EN LINEA # ", var)
                     
@@ -167,6 +205,7 @@ class Analizador_semantico:
                             verdad=True
                         if(verdad is not True):
                             print("ERROR Retorna variable inexistente o de tipo de dato distinto")
+                        
                 elif(aux.valor_de_retorno.find("string")!=-1 and  len(linea_actual.palabras)<=3):
                     #puede retornar un valor costante o variable
                     lin=linea_actual.palabras[1]
@@ -293,6 +332,80 @@ class Analizador_semantico:
                     print("Inicio de alcance en linea # ", var)   
                     localidad=True
                     nombre_de_la_funcion.put("if")
+                _funcion=Funcion(linea_textual,"boolean")
+                inicio=linea_textual.find("(")+1
+                final=""
+                if(linea_textual.find(")}")!=-1):
+                    final=linea_textual.find(")}")
+                elif(linea_textual.find(")")!=-1):
+                    final=linea_textual.find(")")
+                tripleta=linea_textual[inicio:final]
+                tripleta=tripleta.split(" ")
+                if(tripleta[1]=="<" or tripleta[1]==">" or tripleta[1]=="<=" or tripleta[1]==">=" or tripleta[1]=="==" or tripleta[1]=="!="):
+                    #"operador logico aceptado"
+                    variable_1=tripleta[0]
+                    const_1=False
+                    const_2=False
+                    variable_2=tripleta[2]
+                    _funcion_anterior=metodos.pop()
+                    metodos.append(_funcion_anterior)
+                    if(variable_1.isidentifier()):
+                        if(self.existe_dentro_de_una_funcion(variable_1,_funcion_anterior) is True):
+                            variable_1=self.retorna_variable_desde_funcion(variable_1,_funcion_anterior)
+                            const_1=True
+                            print("primer variable del if existente en linea #", var)
+                        elif(self.tabla_de_valores['variable'].get(variable_1) is not None):
+                            variable_1=self.tabla_de_valores['variable'].get(variable_1)
+                            print("primer variable del if existente en linea #", var)
+                            const_1=True
+                    else:
+                        if(self.es_string(variable_1) is True or self.es_int(variable_1) is True or self.es_float(variable_1) is True):
+                            
+                            print("primer parametro del if es costante, por lo tanto es aceptada en linea # ", var)
+                        else:
+                            print("primer parametro del if : " ,variable_1, " no es permitido")
+                    if(variable_2.isidentifier()):
+                        if(self.existe_dentro_de_una_funcion(variable_2,_funcion_anterior) is True):
+                            variable_2=self.retorna_variable_desde_funcion(variable_2,_funcion_anterior)
+                            print("segundo variable del if existente en linea #", var)
+                            const_2=True
+                        elif(self.tabla_de_valores['variable'].get(variable_2) is not None):
+                            variable_2=self.tabla_de_valores['variable'].get(variable_2)
+                            print("segundo variable del if existente en linea #", var)
+                            const_2=True
+                    else:
+                        if(self.es_string(variable_2) is True or self.es_int(variable_2) is True or self.es_float(variable_2) is True):
+                            
+                            print("segundo parametro del if es costante, por lo tanto es aceptada en linea # ", var)
+                        else:
+                            print("segundo parametro del if : " ,variable_2, " no es permitido")
+                    #ya se sabe que son datos permitidos pero ellos dos tienen que ser iguales
+                    if(const_1==True and const_2==True):
+                        if(variable_1.tipo_de_dato==variable_2.tipo_de_dato):
+                            print("tipo de dato igual")
+                        else:
+                            print("tipo de datos de variables diferente en linea # ", var)
+                    elif(const_1!=True and const_2!=True):
+                        if(self.que_tipo_de_dato(variable_1)==self.que_tipo_de_dato(variable_2)):
+                            print("ambos condiciones son constantes")
+                        else:
+                            print("Tipo de dato a utilizar son diferentes en linea # ", var)
+                    elif(const_1!=True and const_2==True):
+                        if(self.que_tipo_de_dato(variable_1)==variable_2.tipo_de_dato):
+                            print("comparacion constante variable aceptada en linea # ", var)
+                        else:
+                            print("comparacion constante variable aceptada, tipo de datos distintos en linea # ", var)
+
+                    elif(const_1==True and const_2!=True):
+                        if(self.que_tipo_de_dato(variable_2)==variable_1.tipo_de_dato):
+                            print("comparacion constante variable aceptada en linea # ", var)
+                        else:
+                            print("comparacion constante variable aceptada, tipo de datos distintos en linea # ", var)
+                    metodos.append(_funcion)
+                    
+                else:
+                    print("Error en linea ", var, "operacion: ", tripleta[1], "no soportada")
+                
 
                     
                     #revisar que existan los parametro
@@ -303,6 +416,88 @@ class Analizador_semantico:
                     print("Inicio de alcance en linea # ", var) 
                     localidad=True
                     nombre_de_la_funcion.put("while")
+                _funcion=Funcion(linea_textual,"boolean")
+                inicio=linea_textual.find("(")+1
+                final=""
+                if(linea_textual.find(")}")!=-1):
+                    final=linea_textual.find(")}")
+                elif(linea_textual.find(")")!=-1):
+                    final=linea_textual.find(")")
+                tripleta=linea_textual[inicio:final]
+                tripleta=tripleta.split(" ")
+                if(tripleta[1]=="<" or tripleta[1]==">" or tripleta[1]=="<=" or tripleta[1]==">=" or tripleta[1]=="==" or tripleta[1]=="!="):
+                    #"operador logico aceptado"
+                    variable_1=tripleta[0]
+                    const_1=False
+                    const_2=False
+                    variable_2=tripleta[2]
+                    condicion=True
+                    _funcion_anterior=None
+                    while(condicion):
+                        _funcion_anterior=metodos.pop()
+                        
+                        if(_funcion_anterior.nombre.find("if")!=-1 or _funcion_anterior.nombre.find("while")!=-1 ):
+                            condicion=True
+                        else:
+                            condicion=False
+                    if(variable_1.isidentifier()):
+                        if(self.existe_dentro_de_una_funcion(variable_1,_funcion_anterior) is True):
+                            variable_1=self.retorna_variable_desde_funcion(variable_1,_funcion_anterior)
+                            const_1=True
+                            print("primer variable del while existente en linea #", var)
+                        elif(self.tabla_de_valores['variable'].get(variable_1) is not None):
+                            variable_1=self.tabla_de_valores['variable'].get(variable_1)
+                            print("primer variable del while existente en linea #", var)
+                            const_1=True
+                    else:
+                        if(self.es_string(variable_1) is True or self.es_int(variable_1) is True or self.es_float(variable_1) is True):
+                            
+                            print("primer parametro del while es costante, por lo tanto es aceptada en linea # ", var)
+                        else:
+                            print("primer parametro del while : " ,variable_1, " no es permitido")
+                    if(variable_2.isidentifier()):
+                        if(self.existe_dentro_de_una_funcion(variable_2,_funcion_anterior) is True):
+                            variable_2=self.retorna_variable_desde_funcion(variable_2,_funcion_anterior)
+                            print("segundo variable del while existente en linea #", var)
+                            const_2=True
+                        elif(self.tabla_de_valores['variable'].get(variable_2) is not None):
+                            variable_2=self.tabla_de_valores['variable'].get(variable_2)
+                            print("segundo variable del while existente en linea #", var)
+                            const_2=True
+                    else:
+                        if(self.es_string(variable_2) is True or self.es_int(variable_2) is True or self.es_float(variable_2) is True):
+                            
+                            print("segundo parametro del while es costante, por lo tanto es aceptada en linea # ", var)
+                        else:
+                            print("segundo parametro del while : " ,variable_2, " no es permitido")
+                    #ya se sabe que son datos permitidos pero ellos dos tienen que ser iguales
+                    if(const_1==True and const_2==True):
+                        if(variable_1.tipo_de_dato==variable_2.tipo_de_dato):
+                            print("tipo de dato igual")
+                        else:
+                            print("tipo de datos de variables diferente en linea # ", var)
+                    elif(const_1!=True and const_2!=True):
+                        if(self.que_tipo_de_dato(variable_1)==self.que_tipo_de_dato(variable_2)):
+                            print("ambos condiciones son constantes")
+                        else:
+                            print("Tipo de dato a utilizar son diferentes en linea # ", var)
+                    elif(const_1!=True and const_2==True):
+                        if(self.que_tipo_de_dato(variable_1)==variable_2.tipo_de_dato):
+                            print("comparacion constante variable aceptada en linea # ", var)
+                        else:
+                            print("comparacion constante variable aceptada, tipo de datos distintos en linea # ", var)
+
+                    elif(const_1==True and const_2!=True):
+                        if(self.que_tipo_de_dato(variable_2)==variable_1.tipo_de_dato):
+                            print("comparacion constante variable aceptada en linea # ", var)
+                        else:
+                            print("comparacion constante variable aceptada, tipo de datos distintos en linea # ", var)
+                    metodos.append(_funcion)
+                    
+                else:
+                    print("Error en linea ", var, "operacion: ", tripleta[1], "no soportada")
+                
+
                        
             
             
